@@ -53,19 +53,19 @@
             <% } %>
         <% } %>
 
-        <!-- Analyzing implicit causes -->
-        <% if (fact.implicitCauses.length > 0) { %>
-            <h3>Implicit causes</h3>
+        <!-- Analyzing consequences -->
+        <% if (fact.consequences.length > 0) { %>
+            <h3>Derives</h3>
             <ul>
-            <% for (var i = 0; i < fact.implicitCauses.length; i++) { %>
+            <% for (var i = 0; i < fact.consequences.length; i++) { %>
                 <li>
-                    <a class="fact fact-valid-<%- fact.implicitCauses[i].isValid() %>" href="/explore/<%- encodeURIComponent(fact.implicitCauses[i].toString()) %>"><%- fact.implicitCauses[i].truncatedString() %></a>
+                    <a class="fact fact-valid-<%- fact.consequences[i].isValid() %>" href="/explore/<%- encodeURIComponent(fact.consequences[i].toString()) %>"><%- fact.consequences[i].truncatedString() %></a>
                 </li>
             <% } %>
             </ul>
         <% } %>
 
-        <!-- Analyzing consequences -->
+        <!-- Analyzing consequences
         <% if (derivations.length > 0) { %>
             <h3>Derives</h3>
             <ul>
@@ -75,7 +75,7 @@
                 </li>
             <% } %>
             </ul>
-        <% } %>
+        <% } %>-->
 
     <% } %>
 </div>

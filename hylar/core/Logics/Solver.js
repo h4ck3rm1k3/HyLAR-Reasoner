@@ -116,6 +116,34 @@ Solver = {
             for (var i = 0; i < mappingList.length; i++) {
                 if (mappingList[i]) {
                     // Replace mappings on all consequences
+                    causes = Logics.buildCauses(mappingList[i].__facts__);                    
+                    for (var j = 0; j < rule.consequences.length; j++) {
+                        consequence = this.substituteFactVariables(mappingList[i], rule.consequences[j], causes);
+                        //if (Logics.filterKnownOrAlternativeImplicitFact(consequence, kb, resolvedImplicitFacts)) {
+                        consequences.push(consequence);
+                        //}
+                    }
+                    Logics.putConsequences(mappingList[i].__facts__, consequences);                    
+                }
+            }
+            deferred.resolve(consequences);
+        } catch(e) {
+            deferred.reject(e);
+        }
+
+        return deferred.promise;
+    },
+
+    /*evaluateThroughRestrictionWithTagging: function(rule, kb) {
+        var mappingList = this.getMappings(rule, kb), deferred = q.defer(),
+            consequences = [], consequence, causes, implicitCauses;
+
+        this.checkOperators(rule, mappingList);
+
+        try {
+            for (var i = 0; i < mappingList.length; i++) {
+                if (mappingList[i]) {
+                    // Replace mappings on all consequences
                     causes = Logics.buildCauses(mappingList[i].__facts__);
                     // Retrieves implicit causes
                     implicitCauses = Logics.getOnlyImplicitFacts(mappingList[i].__facts__);
@@ -133,13 +161,13 @@ Solver = {
         }
 
         return deferred.promise;
-    },
+    },*/
 
     checkOperators: function(rule, mappingList) {
         var causes = rule.operatorCauses,
             operationToEvaluate, substitutedFact;
 
-        if (rule.operatorCauses.length == 0) return mappingList;
+        if (rule.operatorCauses.length === 0) return mappingList;
 
         for (var i = 0; i < mappingList.length; i++) {
             for (var j = 0; j < causes.length; j++) {

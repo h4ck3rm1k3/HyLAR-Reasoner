@@ -131,9 +131,9 @@ ParsingInterface = {
     factToTurtle: function(fact) {
         var subject, predicate, object;
 
-        /*if (fact.fromTriple !== undefined) {
-            return fact.fromTriple;
-        }*/
+        if (fact.falseFact) {
+            return '';
+        }
 
         subject = this.parseStrEntityToTurtle(fact.subject);
         predicate = this.parseStrEntityToTurtle(fact.predicate);

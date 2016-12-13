@@ -61,6 +61,7 @@ Hylar = function() {
         classifying: false,
         querying: false
     };    
+    //this.setTagBased();
 };
 
 Hylar.prototype.toggleClassifyingStatus = function() {

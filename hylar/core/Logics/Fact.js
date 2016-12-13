@@ -12,20 +12,20 @@ var Utils = require('../Utils');
  * @param originFacts array of facts causing this
  * @constructor
  */
-Fact = function(pred, sub, obj, originConjs, expl, graphs, implicitCauses, notUsingValidity, fromTriple) {
+Fact = function(pred, sub, obj, originConjs, expl, graphs, consequences, notUsingValidity, fromTriple) {
     if(pred == 'FALSE') {
         this.falseFact = 'true';
     }
     if (originConjs === undefined) originConjs = [];
     if (expl === undefined) expl = true;
     if (graphs === undefined) graphs = [];
-    if (implicitCauses === undefined) implicitCauses = [];
+    if (consequences === undefined) consequences = [];
     this.matches = {};
 
     this.predicate = pred;
     this.subject = sub;
     this.object = obj;
-    this.implicitCauses = implicitCauses;
+    this.consequences = consequences;
     this.fromTriple = fromTriple;
 
     this.causedBy = originConjs;
