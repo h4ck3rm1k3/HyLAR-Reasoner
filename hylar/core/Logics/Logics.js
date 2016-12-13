@@ -231,9 +231,9 @@ Logics = {
     updateValidTags: function(kb, additions, deletions) {
         var newAdditions = [],
             resolvedAdditions = [],
-            kbMap = kb.map(function(x) { return x.toString(); }), index;
+            kbMap = kb.map(function(x) { return x.toRaw(); }), index;
         for (var i = 0; i < additions.length; i++) {
-            index = kbMap.indexOf(additions[i].toString());
+            index = kbMap.indexOf(additions[i].toRaw());
             if (index !== -1) {
                 if (kb[index].explicit) {
                     kb[index].valid = true;
@@ -246,7 +246,7 @@ Logics = {
         }
         
         for (i= 0; i < deletions.length; i++) {
-            index = kbMap.indexOf(deletions[i].toString());
+            index = kbMap.indexOf(deletions[i].toRaw());
             if (index !== -1 && kb[index].explicit) {
                 kb[index].valid = false;                
             }
@@ -255,7 +255,7 @@ Logics = {
         return newAdditions;
     },
 
-    addAlternativeDerivationAsCausedByFromExplicit: function(kbFact, altFact) {
+    /*addAlternativeDerivationAsCausedByFromExplicit: function(kbFact, altFact) {
         var derivations = kbFact.consequences;
 
         for (var i = 0; i < derivations.length; i++) {
@@ -264,10 +264,10 @@ Logics = {
                 this.addAlternativeDerivationAsCausedByFromExplicit(derivations.consequences[j], altFact);
             }
         }
-    },
+    },*/
 
-    /*addAlternativeDerivationAsCausedByFromExplicit: function(kb, kbFact, altFact) {
-        var derivations = kbFact.implicitlyDerives(kb),
+    addAlternativeDerivationAsCausedByFromExplicit: function(kbFact, altFact) {
+        var derivations = kbFact.consequences,
             derivConj, kbConj, newConj, alternativeConjs = [];
 
         for (var i = 0; i < derivations.length; i++) {
@@ -281,10 +281,11 @@ Logics = {
                     }
                 }
             }
-
+            for (j = 0; j < derivations[i].consequences.length; j++) {
+                this.addAlternativeDerivationAsCausedByFromExplicit(derivations[i].consequences[j], altFact);
+            }
         }
-        kb.push(altFact);
-    },*/
+    },
 
     /*addAlternativeDerivationAsCausedByFromImplicit: function(kb, kbFact, altFact) {
         var derivations = kbFact.explicitlyDerives(kb),

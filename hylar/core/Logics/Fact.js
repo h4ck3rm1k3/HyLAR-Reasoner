@@ -71,6 +71,16 @@ Fact.prototype = {
         return e + spo;
     },
 
+    toRaw: function() {
+        var spo;
+        if(this.falseFact) {
+            spo = 'FALSE';
+        } else {
+            spo = '(' + this.subject + ' ' + this.predicate + ' ' + this.object + ')';
+        }        
+        return spo;
+    },
+
     toCHR: function(mapping) {
         var chrized;
 
