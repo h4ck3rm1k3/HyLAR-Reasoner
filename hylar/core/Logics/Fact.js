@@ -101,6 +101,18 @@ Fact.prototype = {
         return chrized;
     },
 
+    toRaw: function() {
+        var spo;
+
+        if(this.falseFact) {
+            spo = 'FALSE';
+        } else {
+            spo = '(' + this.subject + ' ' + this.predicate + ' ' + this.object + ')';
+        }
+
+        return spo;
+    },
+
     subjectCHR: function(mapping) {
         return Utils.asCHRAtom(this.subject, mapping);
     },
@@ -269,6 +281,16 @@ Fact.prototype = {
             }
         }
         return false;
+    },
+
+    doPropagate: function(keptFact) {        
+        if (this.__propagate__) {
+            for (var i = 0; i < this.__propagate__.consequences.length; i++) {
+                if (this.__propagate__.consequences[i] == this) {
+                    this.__propagate__.consequences[i] = keptFact;         
+                }
+            }
+        }
     }
 };
 
