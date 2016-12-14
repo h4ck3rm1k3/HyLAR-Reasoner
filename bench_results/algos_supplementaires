@@ -1,0 +1,27 @@
+[COMBINE]
+
+for all (fact in F1):
+	if (fact in F2):
+		F1.derivedFrom = F1.derivedFrom u F2.derivedFrom
+		F1.consequences = F1.consequences u F2.consequences
+	endif
+endfor
+
+O(n²)
+
+[TB]
+
+Apres Line 6
+
+else:
+	for (fi in Fi):
+		if (fact.explicitVersionOf(fi)):
+			for all (consequence in fi):
+				consequence.causedBy.add(fact)
+			endfor
+		endif
+	endfor
+endif
+
+O(n*n*1) = O(n²)
+

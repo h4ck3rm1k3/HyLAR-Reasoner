@@ -12,10 +12,12 @@ var ParsingInterface = require('./ParsingInterface');
 
 function Dictionary() {
     this.dict = {
-        '#default': {}
+        '#default': {
+            __actualLength__: 0
+        }
     };
     this.lastUpdate = 0;
-    this.purgeThreshold = 13000000;
+    this.purgeThreshold = 15000;
 };
 
 Dictionary.prototype.turnOnForgetting = function() {
@@ -37,7 +39,9 @@ Dictionary.prototype.resolveGraph = function(graph) {
 
 Dictionary.prototype.clear = function() {
     this.dict = {
-        '#default': {}
+        '#default': {
+            __actualLength__: 0
+        }
     };
 };
 
@@ -65,11 +69,7 @@ Dictionary.prototype.get = function(ttl, graph) {
  * @returns {*}
  */
 Dictionary.prototype.put = function(fact, graph) {
-    var timestamp = new Date().getTime(), factToTurtle;
-
-    if (this.allowPurge) {
-        this.purgeOld();
-    }
+    var timestamp = new Date().getTime(), factToTurtle;    
 
     this.lastUpdate = timestamp;
     graph = this.resolveGraph(graph);
@@ -84,6 +84,7 @@ Dictionary.prototype.put = function(fact, graph) {
             } else {
                 this.dict[graph][factToTurtle] = [fact];
                 this.dict[graph][factToTurtle].lastUpdate = timestamp;
+                this.dict[graph].__actualLength__++;
             }
         }
         return true;
@@ -92,28 +93,32 @@ Dictionary.prototype.put = function(fact, graph) {
     }
 };
 
-Dictionary.prototype.lastUpdateIsOld = function() {
-    if (this.allowPurge) {
-        return ( (this.lastUpdate != 0) && (new Date().getTime() - this.lastUpdate) > this.purgeThreshold);
-    } else {
-        return false;
-    }
-};
-
 Dictionary.prototype.isOld = function(graph, factIndex) {
-    return (this.dict[graph][factIndex].lastUpdate - this.lastUpdate) > this.purgeThreshold;
+    return this.dict[graph][factIndex].lastUpdate < this.lastUpdate;
 };
 
 Dictionary.prototype.purgeOld = function() {
-    for (var i in this.dict.length) {
-        for (var j in this.dict[i].length) {
-            for (var k in this.dict[i][j]) {
-                if (!this.dict[i][j][k].isValid() && this.isOld(i,j)) {
-                    delete this.dict[i][j][k];
+    if (this.allowPurge) {
+        for (var i in this.dict) {
+            if (this.dict[i].__actualLength__ > this.purgeThreshold) {
+                for (var j in this.dict[i]) {            
+                    for (var k = 0; k < this.dict[i][j].length; k++) {
+                        if (this.dict[i][j][k] !== undefined) {
+                            if (!this.dict[i][j][k].isValid() && this.isOld(i,j)) {
+                                delete this.dict[i][j][k];
+                                this.dict[i].__actualLength__--;
+                            }
+                        }
+                    }                
                 }
+                console.notify("Completed fact-forgetting");            
             }
         }
     }
+};
+
+Dictionary.prototype.actualGraphLength = function(graph) {
+    return this.dict[graph].__actualLength__;
 };
 
 /**

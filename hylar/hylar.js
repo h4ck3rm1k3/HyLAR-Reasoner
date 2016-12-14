@@ -459,6 +459,7 @@ Hylar.prototype.registerDerivations = function(derivations, graph) {
     }
 
     console.notify('Registered successfully.');
+    this.dict.purgeOld();
 };
 
 /**

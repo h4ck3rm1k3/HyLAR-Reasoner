@@ -48,7 +48,7 @@ Logics = {
         var fR = [];
         for (var key in fs) {
             var fact = fs[key];
-            if(!fact.explicit) {
+            if(fact && !fact.explicit) {
                 fR.push(fact);
             }
         }
