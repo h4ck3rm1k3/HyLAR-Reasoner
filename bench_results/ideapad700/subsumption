@@ -41,7 +41,7 @@ incremental
  REINSERT UNIV 1
  798
  SELECT UNIV 1
- 59
+ 39
  tagBased
  CLASSIFICATION UNIV 2
  4650
@@ -63,4 +63,4 @@ incremental
  REINSERT UNIV 3
  675
  SELECT UNIV 3
- 30
+ 25
