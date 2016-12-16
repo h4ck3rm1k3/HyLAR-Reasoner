@@ -62,9 +62,9 @@ Solver = {
             } catch (e) {}
         }
         Promise.all(promises).then(function(r) {
-            1;//
+            {}
         }).catch(function(e) {
-            2;//
+            {}
         });
     },
 
@@ -303,9 +303,9 @@ Solver = {
         // Merges local and global mapping
         for (var mapKey in mapping) {
             if (mapKey == '__facts__') {
-                localMapping[mapKey] = Utils.insertUnique(mapping[mapKey], fact)
+                localMapping[mapKey] = Utils.insertUnique(mapping[mapKey], fact);
             } else {
-                for (var key in localMapping) {
+                for (key in localMapping) {
                     if (mapping[mapKey] == localMapping[key]) {
                         if (mapKey != key) {
                             return false;
@@ -347,7 +347,7 @@ Solver = {
             return Logics.skolemize(mapping.__facts__, elem);
         } else if(Logics.isVariable(elem)) {
             if (mapping[elem] !== undefined) {
-                return mapping[elem]
+                return mapping[elem];
             }
         }
         return elem;

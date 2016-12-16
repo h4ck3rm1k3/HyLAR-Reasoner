@@ -70,7 +70,7 @@ ParsingInterface = {
         if(explicit === undefined) {
             explicit = true;
         }
-        return new Fact(t.predicate.toString(), t.subject.toString(), t.object.toString()/*.format()*/, [], explicit, [], [], notUsingValid, t.toString())
+        return new Fact(t.predicate.toString(), t.subject.toString(), t.object.toString(), [], explicit, [], [], notUsingValid, t.toString());
     },
 
     triplesToFacts: function(t, explicit, notUsingValid) {
@@ -179,10 +179,10 @@ ParsingInterface = {
     },
 
     tripleToTurtle: function(triple) {
-        var ttl = this.parseStrEntityToTurtle(triple.subject.toString()) + " "
-                + this.parseStrEntityToTurtle(triple.predicate.toString()) + " "
-                + this.parseStrEntityToTurtle(triple.object.toString()) + " . ";
-        return ttl;
+        var s = this.parseStrEntityToTurtle(triple.subject.toString()),
+            p = this.parseStrEntityToTurtle(triple.predicate.toString()),
+            o = this.parseStrEntityToTurtle(triple.object.toString());
+        return s + " " + p + " " + o + " . ";
     },
 
     triplesToTurtle: function(triples) {
@@ -194,15 +194,13 @@ ParsingInterface = {
     },
 
     isolateWhereQuery: function(parsedQuery, whereIndex) {
-        var isolatedQuery,
+        var isolatedQuery, i,
             patterns = parsedQuery.where[whereIndex].patterns;
         if (parsedQuery.queryType == 'SELECT') {
-            isolatedQuery = parsedQuery.queryType + " "
-                + parsedQuery.variables.join(' ')
-                + " { ";
+            isolatedQuery = parsedQuery.queryType + " " + parsedQuery.variables.join(' ') + " { ";
         } else if (parsedQuery.queryType == 'CONSTRUCT') {
             isolatedQuery = parsedQuery.queryType + " { ";
-            for (var i = 0; i < parsedQuery.template.length; i++) {
+            for (i = 0; i < parsedQuery.template.length; i++) {
                isolatedQuery += this.tripleToTurtle(parsedQuery.template[i]);
             }
             isolatedQuery += " } WHERE { ";
@@ -213,7 +211,7 @@ ParsingInterface = {
         }
         isolatedQuery += " { ";
         if (patterns != null) {
-            for (var i = 0; i < patterns.length; i++) {
+            for (i = 0; i < patterns.length; i++) {
                 isolatedQuery += " " + this.triplesToTurtle(patterns[i].triples) + " ";
             }
         } else {
@@ -247,11 +245,9 @@ ParsingInterface = {
     },
 
     isUpdateWhere: function(parsedQuery) {
-        var res;
+        var res, update = parsedQuery.updates[0];
         try {
-            if ( (parsedQuery.updates[0].where)
-                || (parsedQuery.updates[0].updateType == "deletewhere")
-                || (parsedQuery.updates[0].updateType == "insertwhere")) {
+            if ( (update.where) || (update.updateType == "deletewhere") || (update.updateType == "insertwhere")) {
                 return true;
             } else {
                 return false;
@@ -284,8 +280,7 @@ ParsingInterface = {
     buildUpdateQueryWithConstructResults: function(initialQuery, results) {
         switch(this.isInsert(initialQuery)) {
             case true:
-                return "INSERT DATA { " + this.triplesToTurtle(results.triples) + " }";
-                break;
+                return "INSERT DATA { " + this.triplesToTurtle(results.triples) + " }";                
             default:
                 return "DELETE DATA { " + this.triplesToTurtle(results.triples) + " }";
         }

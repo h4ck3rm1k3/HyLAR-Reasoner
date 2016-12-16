@@ -115,9 +115,7 @@ Logics = {
      * @returns {*}
      */
     causeMatchesFact: function(cause, fact) {
-        return this.causeMemberMatchesFactMember(cause.subject, fact.subject)
-            && this.causeMemberMatchesFactMember(cause.predicate, fact.predicate)
-            && this.causeMemberMatchesFactMember(cause.object, fact.object);
+        return this.causeMemberMatchesFactMember(cause.subject, fact.subject) && this.causeMemberMatchesFactMember(cause.predicate, fact.predicate) && this.causeMemberMatchesFactMember(cause.object, fact.object);
     },
 
     /**
@@ -216,7 +214,7 @@ Logics = {
     },
 
     factIsGround: function(fact) {
-        return !this.isVariable(fact.subject) && !this.isVariable(fact.predicate) && !this.isVariable(fact.object)
+        return !this.isVariable(fact.subject) && !this.isVariable(fact.predicate) && !this.isVariable(fact.object);
     },
 
     getInconsistencies: function(fs) {
@@ -271,64 +269,6 @@ Logics = {
         }
     },
 
-    /*addAlternativeDerivationAsCausedByFromExplicit: function(kb, kbFact, altFact) {
-        var derivations = kbFact.implicitlyDerives(kb),
-            derivConj, kbConj, newConj, alternativeConjs = [];
-
-        for (var i = 0; i < derivations.length; i++) {
-            for (var j = 0; j < derivations[i].causedBy.length; j++) {
-                derivConj = derivations[i].causedBy[j];
-                for (var k = 0; k < kbFact.causedBy.length; k++) {
-                    kbConj = kbFact.causedBy[k];
-                    if (newConj == Utils.removeSubset(derivConj, kbConj)) {
-                        newConj.push(altFact);
-                        derivations[i].causedBy = this.uniquesCausedBy(derivations[i].causedBy, [newConj]);
-                    }
-                }
-            }
-            for (j = 0; j < derivations[i].consequences.length; j++) {
-                this.addAlternativeDerivationAsCausedByFromExplicit(derivations[i].consequences[j], altFact);
-            }
-        }
-        kb.push(altFact);
-    },*/
-
-    /*
-    addAlternativeDerivationAsCausedByFromImplicit: function(kb, kbFact, altFact) {
-        var derivations = kbFact.explicitlyDerives(kb),
-            derivConj, kbConj, newConj, alternativeConjs = [];
-
-        for (var i = 0; i < derivations.length; i++) {
-            derivations[i].implicitCauses.push(altFact);
-            for (var j = 0; j < derivations[i].causedBy.length; j++) {
-                derivConj = derivations[i].causedBy[j];
-                for (var k = 0; k < altFact.causedBy.length; k++) {
-                    kbConj = altFact.causedBy[k];
-                    if (newConj = Utils.removeFromSet(derivConj, kbFact)) {
-                        newConj = Utils.uniques(newConj, kbConj);
-                        //derivations[i].causedBy.push(newConj);
-                        derivations[i].causedBy = this.uniquesCausedBy(derivations[i].causedBy, [newConj]);
-                    }
-                }
-            }
-
-        }
-        kb.push(altFact);
-    },
-
-    filterKnownOrAlternativeImplicitFact: function(derivedFact, kb, implicitFactsSubset) {
-        for (var i = 0; i < kb.length; i++) {
-            if (kb[i].equivalentTo(derivedFact)) {
-                return false;
-            } else if (kb[i].isAlternativeEquivalentOf(derivedFact)) {
-                implicitFactsSubset.push(derivedFact);
-                this.addAlternativeDerivationAsCausedBy(kb, kb[i], derivedFact);
-                return false;
-            }
-        }
-        return derivedFact;
-    },*/
-
     buildCauses: function(conjunction) {
         var explicitFacts = this.getOnlyExplicitFacts(conjunction),
             implicitFacts = this.getOnlyImplicitFacts(conjunction),
@@ -366,7 +306,7 @@ Logics = {
     combineImplicitCauses: function(implicitFacts) {
         var combination = implicitFacts[0].causedBy;
         for (var i = 1; i < implicitFacts.length; i++) {
-            combination = this.disjunctCauses(combination, implicitFacts[i].causedBy)
+            combination = this.disjunctCauses(combination, implicitFacts[i].causedBy);
         }
         return combination;
     },
@@ -392,8 +332,9 @@ Logics = {
             foundFactIndex;
         for (var i = 0; i < fs.length; i++) {
             if (fs[i] !== undefined) {
-                if (foundFactIndex = fs[i].appearsIn(unifiedSet)) {
-                    unifiedSet[foundFactIndex].causedBy = this.uniquesCausedBy(fs[i].causedBy, unifiedSet[foundFactIndex].causedBy);//Utils.uniques(fs[i].causedBy, unifiedSet[foundFactIndex].causedBy);
+                foundFactIndex = fs[i].appearsIn(unifiedSet);
+                if (foundFactIndex) {
+                    unifiedSet[foundFactIndex].causedBy = this.uniquesCausedBy(fs[i].causedBy, unifiedSet[foundFactIndex].causedBy);
                     unifiedSet[foundFactIndex].consequences = Utils.uniques(fs[i].consequences, unifiedSet[foundFactIndex].consequences);                    
                     fs[i].doPropagate(unifiedSet[foundFactIndex]);                   
                 } else {
@@ -501,7 +442,7 @@ Logics = {
         if (body.toLowerCase().indexOf('false') !== -1) {
             consequences.push(new Fact('FALSE'));
         } else {
-            for (var i = 0; i < bodyTriples.length; i++) {
+            for (i = 0; i < bodyTriples.length; i++) {
                 atoms = bodyTriples[i].match(atomRegex).splice(1);
                 consequences.push(new Fact(atoms[1], atoms[0], atoms[2]));
             }

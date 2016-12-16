@@ -64,21 +64,11 @@ Fact.prototype = {
         if(this.falseFact) {
             spo = 'FALSE';
         } else {
-            spo = '(' + this.subject + ' ' + this.predicate + ' ' + this.object + ')'
+            spo = '(' + this.subject + ' ' + this.predicate + ' ' + this.object + ')';
         }
 
-        this.explicit ? e = 'E' : e = 'I';
+        if (this.explicit) { e = 'E'; } else { e = 'I'; }
         return e + spo;
-    },
-
-    toRaw: function() {
-        var spo;
-        if(this.falseFact) {
-            spo = 'FALSE';
-        } else {
-            spo = '(' + this.subject + ' ' + this.predicate + ' ' + this.object + ')';
-        }        
-        return spo;
     },
 
     toCHR: function(mapping) {
@@ -103,13 +93,11 @@ Fact.prototype = {
 
     toRaw: function() {
         var spo;
-
         if(this.falseFact) {
             spo = 'FALSE';
         } else {
             spo = '(' + this.subject + ' ' + this.predicate + ' ' + this.object + ')';
         }
-
         return spo;
     },
 
@@ -131,10 +119,10 @@ Fact.prototype = {
         if(this.falseFact) {
             spo = 'FALSE';
         } else {
-            spo = '(' + Utils.removeBeforeSharp(this.subject) + ', ' + Utils.removeBeforeSharp(this.predicate) + ', ' + Utils.removeBeforeSharp(this.object) + ')'
+            spo = '(' + Utils.removeBeforeSharp(this.subject) + ', ' + Utils.removeBeforeSharp(this.predicate) + ', ' + Utils.removeBeforeSharp(this.object) + ')';
         }
 
-        this.explicit ? e = 'E' : e = 'I';
+        if (this.explicit) { e = 'E'; } else { e = 'I'; }
         return e + spo;
     },
 
@@ -180,7 +168,7 @@ Fact.prototype = {
     isValid: function() {
         if (this.explicit) {
             return this.valid;
-        } else if (this.causedBy === undefined || this.causedBy.length == 0) {
+        } else if (this.causedBy === undefined || this.causedBy.length === 0) {
             return undefined;
         } else {
             var valid,
@@ -199,28 +187,6 @@ Fact.prototype = {
             return false;
         }
     },
-    /*isValid: function(treated) {
-        if (treated === undefined) treated = [];
-        if (this.explicit) {
-            return this.valid;
-        }
-        for (var i = 0; i < this.causedBy.length; i++) {
-            var valid = true,
-                conj = this.causedBy[i];
-            for (var j = 0; j < conj.length; j++) {
-                if (treated.toString().indexOf(conj[j]) === -1) {
-                    treated.push(conj[j]);
-                    valid = valid && conj[j].isValid(treated);
-                } else {
-                    return false;
-                }
-            }
-            if (valid) {
-                return true;
-            }
-        }
-        return false;
-    },*/
 
     implicitlyDerives: function(kb) {
         var factsDerived = [];

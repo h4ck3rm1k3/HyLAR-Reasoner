@@ -24,7 +24,7 @@ ReasoningEngine = {
      */
     naive: function(FeAdd, FeDel, F, R) {
         var FiAdd = [], FiAddNew = [], additions, deletions,
-            Fe = Logics.getOnlyExplicitFacts(F), FiAddNew = [];
+            Fe = Logics.getOnlyExplicitFacts(F);
 
         // Deletion
         if(FeDel && FeDel.length) {
