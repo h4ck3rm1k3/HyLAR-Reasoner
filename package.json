@@ -46,7 +46,7 @@
     "node": ">=0.10.0"
   },
   "scripts": {
-    "test": "export rm=incremental &&mocha test/adaptation_test test/tests.js && export rm=tagBased && mocha test/tests.js && mocha test/logics_test.js",
+    "test": "mocha test/tests.js --no-timeouts",
     "irtest": "export rm=incremental &&mocha test/tests.js",
     "tbtest": "export rm=tagBased &&mocha test/tests.js",
     "build": "browserify -t brfs test/benchmark_tests_lite.js > bench.js"
