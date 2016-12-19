@@ -157,7 +157,7 @@ Dictionary.prototype.values = function(graph) {
  * Gets all explicit facts from the dictionary.
  * @returns {Array}
  */
-Dictionary.prototype.resolveValues = function(setToResolve, graph) {
+Dictionary.prototype.getAndResolveValues = function(setToResolve, graph) {
     var values = {
             explicit: [],
             implicit: [],
@@ -186,6 +186,28 @@ Dictionary.prototype.resolveValues = function(setToResolve, graph) {
         }
     }
     return values;
+};
+
+Dictionary.prototype.resolveValues = function(setToResolve, graph) {
+    var resolvedSet = [],
+        map = Logics.factSetToMap(setToResolve), index, i;
+
+    graph = this.resolveGraph(graph);
+    for (var key in this.dict[graph]) {
+        for (i = 0; i < this.dict[graph][key].length; i++) {
+            index = map.indexOf(this.dict[graph][key][i]);
+            if (map[index]) {
+                resolvedSet.push(map[index]);
+                map[index] = undefined;
+            }
+        }
+    }
+    for (i = 0; i < setToResolve.length; i++) {
+        if(setToResolve[i] !== undefined) {
+            resolvedSet.push(setToResolve[i]);
+        }
+    }
+    return resolvedSet;
 };
 
 /**

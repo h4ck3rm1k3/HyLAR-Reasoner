@@ -70,11 +70,12 @@ ReasoningEngine = {
             superSet = [], Fe, Fi, deferred = q.defer(),
             resolvedValues, additions, deletions;
             
+            // Guarantees unicity of FeAdd or FiAdd
             if (FeAdd.length > 0) {
-                 resolvedValues = F.resolveValues(FeAdd);
+                 resolvedValues = F.getAndResolveValues(FeAdd);
                  FeAdd = resolvedValues.resolvedSet;
             } else {
-                 resolvedValues = F.resolveValues(FiAdd);
+                 resolvedValues = F.getAndResolveValues(FiAdd);
                  FiAdd = resolvedValues.resolvedSet;
             }
 
@@ -86,12 +87,12 @@ ReasoningEngine = {
             },
 
             overDeletionEvaluationLoop = function() {
-                FiDel = Utils.uniques(FiDel, FiDelNew);
+                FiDel = FiDel.concat(FiDelNew);
                 Rdel = Logics.restrictRuleSet(R, Utils.uniques(FeDel, FiDel));
-                Solver.evaluateRuleSet(Rdel, Utils.uniques(Utils.uniques(Fi, Fe), FeDel))
+                Solver.evaluateRuleSet(Rdel, Fi.concat(Fe, FeDel))
                     .then(function(values) {
-                        FiDelNew = values;
-                        if (Utils.uniques(FiDel, FiDelNew).length > FiDel.length) {
+                        FiDelNew = F.resolveValues(values);
+                        if (FiDelNew.length > 0) {
                             overDeletionEvaluationLoop();
                         } else {
                             Fe = Logics.minus(Fe, FeDel);
@@ -102,12 +103,12 @@ ReasoningEngine = {
             },
 
             rederivationEvaluationLoop = function() {
-                FiAdd = Utils.uniques(FiAdd, FiAddNew);
+                FiAdd = FiAdd.concat(FiAddNew);
                 Rred = Logics.restrictRuleSet(R, FiDel);
-                Solver.evaluateRuleSet(Rred, Utils.uniques(Fe, Fi))
+                Solver.evaluateRuleSet(Rred, Fe.concat(Fi))
                     .then(function(values) {
-                        FiAddNew = values;
-                        if (Utils.uniques(FiAdd, FiAddNew).length > FiAdd.length) {
+                        FiAddNew = F.resolveValues(values);
+                        if (FiAddNew.length > 0) {
                             rederivationEvaluationLoop();
                         } else {
                             insertionEvaluationLoop();
@@ -116,17 +117,17 @@ ReasoningEngine = {
             },
 
             insertionEvaluationLoop = function() {         
-                FiAdd = Utils.uniques(FiAdd, FiAddNew);
-                superSet = Utils.uniques(Utils.uniques(Utils.uniques(Fe, Fi), FeAdd), FiAdd);
+                FiAdd = FiAdd.concat(FiAddNew);
+                superSet = Fe.concat(Fi, FeAdd, FiAdd);
                 Rins = Logics.restrictRuleSet(R, superSet);
                 Solver.evaluateRuleSet(Rins, superSet)
                     .then(function(values) {
-                        FiAddNew = values;                        
-                        if (!Utils.containsSubset(FiAdd, FiAddNew)) {
+                        FiAddNew = F.resolveValues(values);                        
+                        if (FiAddNew.length > 0) {
                             insertionEvaluationLoop();
                         } else {                
-                            additions = Utils.uniques(FeAdd, FiAdd);
-                            deletions = Utils.uniques(FeDel, FiDel);                            
+                            additions = FeAdd.concat(FiAdd);
+                            deletions = FeDel.concat(FiDel);                            
                             deferred.resolve({
                                 additions: additions,
                                 deletions: deletions
