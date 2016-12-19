@@ -372,7 +372,7 @@ Hylar.prototype.treatUpdate = function(update, type) {
             }
             FeIns = ParsingInterface.triplesToFacts(iTriples, true, (that.rMethod == Reasoner.process.it.incrementally));
             FeDel = ParsingInterface.triplesToFacts(dTriples, true, (that.rMethod == Reasoner.process.it.incrementally));
-            return Reasoner.evaluate(FeIns, FeDel, F, that.rMethod, that.rules);
+            return Reasoner.evaluate(FeIns, FeDel, that.getDictionary(), that.rMethod, that.rules);
 
         }).then(function(derivations) {
             that.registerDerivations(derivations, graph);
@@ -487,7 +487,7 @@ Hylar.prototype.classify = function() {
                 }
 
             }
-            return Reasoner.evaluate(facts, [], [], that.rMethod, that.rules);
+            return Reasoner.evaluate(facts, [], that.getDictionary(), that.rMethod, that.rules);
         })
         .then(function(r) {                                   
             that.registerDerivations(r);

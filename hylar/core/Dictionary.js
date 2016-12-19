@@ -153,6 +153,40 @@ Dictionary.prototype.values = function(graph) {
 };
 
 /**
+ * Gets all explicit facts from the dictionary.
+ * @returns {Array}
+ */
+Dictionary.prototype.explicitValues = function(graph) {
+    var values = [];
+    graph = this.resolveGraph(graph);
+    for (var key in this.dict[graph]) {
+        for (var i = 0; i < this.dict[graph][key].length; i++) {
+            if(this.dict[graph][key][i].explicit) {
+                values.push(this.dict[graph][key][i]);
+            }
+        }
+    }
+    return values;
+};
+
+/**
+ * Gets all explicit facts from the dictionary.
+ * @returns {Array}
+ */
+Dictionary.prototype.implicitValues = function(graph) {
+    var values = [];
+    graph = this.resolveGraph(graph);
+    for (var key in this.dict[graph]) {
+        for (var i = 0; i < this.dict[graph][key].length; i++) {
+            if(!this.dict[graph][key][i].explicit) {
+                values.push(this.dict[graph][key][i]);
+            }
+        }
+    }
+    return values;
+};
+
+/**
  * Gets facts corresponding to the turtle triples,returns an object
  * {found: facts found, notfound: turtle triples with no repr.}
  * @param triples An array of turtle triples.

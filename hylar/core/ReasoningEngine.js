@@ -14,6 +14,7 @@ var q = require('q');
  */
 
 ReasoningEngine = {
+
     /**
      * A naive reasoner that recalculates the entire knowledge base.
      * @deprecated
@@ -66,16 +67,14 @@ ReasoningEngine = {
         var Rdel = [], Rred, Rins = [],
             FiDel = [], FiAdd = [],
             FiDelNew = [], FiAddNew = [],
-            superSet = [],
+            superSet = [], Fe, Fi, deferred = q.defer(),
 
-            additions, deletions,
+            additions, deletions;
+            
+            Fe = F.explicitValues();
+            Fi = F.implicitValues();            
 
-            Fe = Logics.getOnlyExplicitFacts(F),
-            Fi = Logics.getOnlyImplicitFacts(F),
-
-            deferred = q.defer(),
-
-            startAlgorithm = function() {
+            var startAlgorithm = function() {
                 overDeletionEvaluationLoop();
             },
 
