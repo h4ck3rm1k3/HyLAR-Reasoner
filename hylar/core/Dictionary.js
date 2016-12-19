@@ -9,6 +9,7 @@
 
 var Utils = require('./Utils');
 var ParsingInterface = require('./ParsingInterface');
+var Logics = require('./Logics/Logics');
 
 function Dictionary() {
     this.dict = {
@@ -156,14 +157,32 @@ Dictionary.prototype.values = function(graph) {
  * Gets all explicit facts from the dictionary.
  * @returns {Array}
  */
-Dictionary.prototype.explicitValues = function(graph) {
-    var values = [];
+Dictionary.prototype.resolveValues = function(setToResolve, graph) {
+    var values = {
+            explicit: [],
+            implicit: [],
+            resolvedSet: []
+        },
+        map = Logics.factSetToMap(setToResolve), index, i;
+
     graph = this.resolveGraph(graph);
     for (var key in this.dict[graph]) {
-        for (var i = 0; i < this.dict[graph][key].length; i++) {
-            if(this.dict[graph][key][i].explicit) {
-                values.push(this.dict[graph][key][i]);
+        for (i = 0; i < this.dict[graph][key].length; i++) {
+            index = map.indexOf(this.dict[graph][key][i]);
+            if (map[index]) {
+                values.resolvedSet.push(map[index]);
+                map[index] = undefined;
             }
+            if(this.dict[graph][key][i].explicit) {
+                values.explicit.push(this.dict[graph][key][i]);
+            } else {
+                values.implicit.push(this.dict[graph][key][i]);
+            }
+        }
+    }
+    for (i = 0; i < setToResolve.length; i++) {
+        if(setToResolve[i] !== undefined) {
+            values.resolvedSet.push(setToResolve[i]);
         }
     }
     return values;

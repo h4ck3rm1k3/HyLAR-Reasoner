@@ -68,11 +68,18 @@ ReasoningEngine = {
             FiDel = [], FiAdd = [],
             FiDelNew = [], FiAddNew = [],
             superSet = [], Fe, Fi, deferred = q.defer(),
-
-            additions, deletions;
+            resolvedValues, additions, deletions;
             
-            Fe = F.explicitValues();
-            Fi = F.implicitValues();            
+            if (FeAdd.length > 0) {
+                 resolvedValues = F.resolveValues(FeAdd);
+                 FeAdd = resolvedValues.resolvedSet;
+            } else {
+                 resolvedValues = F.resolveValues(FiAdd);
+                 FiAdd = resolvedValues.resolvedSet;
+            }
+
+            Fe = resolvedValues.explicit;
+            Fi = resolvedValues.implicit;            
 
             var startAlgorithm = function() {
                 overDeletionEvaluationLoop();

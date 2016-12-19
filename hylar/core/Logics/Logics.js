@@ -230,7 +230,7 @@ Logics = {
     updateValidTags: function(kb, additions, deletions) {
         var newAdditions = [],
             resolvedAdditions = [],
-            kbMap = kb.map(function(x) { return x.toRaw(); }), index;
+            kbMap = this.factSetToMap(kb), index;
         for (var i = 0; i < additions.length; i++) {
             index = kbMap.indexOf(additions[i].toRaw());
             if (index !== -1) {
@@ -477,6 +477,10 @@ Logics = {
             }
         }
         return;
+    },
+
+    factSetToMap: function(set) {
+        return set.map(function(x) { return x.toRaw(); });
     }
 };
 
