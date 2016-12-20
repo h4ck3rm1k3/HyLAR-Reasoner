@@ -81,7 +81,12 @@ Dictionary.prototype.put = function(fact, graph) {
         } else {
             factToTurtle = ParsingInterface.factToTurtle(fact);
             if (this.dict[graph][factToTurtle]) {
-                this.dict[graph][factToTurtle] = Utils.insertUnique(this.dict[graph][factToTurtle], fact);
+                if (this.dict[graph][factToTurtle].explicit) {
+                    this.dict[graph][factToTurtle]["explicit"] = fact;
+                } else {
+                    this.dict[graph][factToTurtle]["implicit"] = fact;
+                }
+                
             } else {
                 this.dict[graph][factToTurtle] = [fact];
                 this.dict[graph][factToTurtle].lastUpdate = timestamp;
@@ -103,7 +108,7 @@ Dictionary.prototype.purgeOld = function() {
         for (var i in this.dict) {
             if (this.dict[i].__actualLength__ > this.purgeThreshold) {
                 for (var j in this.dict[i]) {            
-                    for (var k = 0; k < this.dict[i][j].length; k++) {
+                    for (var k in this.dict[i][j]) {
                         if (this.dict[i][j][k] !== undefined) {
                             if (!this.dict[i][j][k].isValid() && this.isOld(i,j)) {
                                 delete this.dict[i][j][k];
@@ -146,7 +151,7 @@ Dictionary.prototype.values = function(graph) {
     var values = [];
     graph = this.resolveGraph(graph);
     for (var key in this.dict[graph]) {
-        for (var i = 0; i < this.dict[graph][key].length; i++) {
+        for (var i in this.dict[graph][key]) {
             values.push(this.dict[graph][key][i]);
         }
     }
@@ -167,7 +172,7 @@ Dictionary.prototype.getAndResolveValues = function(setToResolve, graph) {
 
     graph = this.resolveGraph(graph);
     for (var key in this.dict[graph]) {
-        for (i = 0; i < this.dict[graph][key].length; i++) {
+        for (i in this.dict[graph][key]) {
             index = map.indexOf(this.dict[graph][key][i]);
             if (map[index]) {
                 values.resolvedSet.push(map[index]);
@@ -189,42 +194,27 @@ Dictionary.prototype.getAndResolveValues = function(setToResolve, graph) {
 };
 
 Dictionary.prototype.resolveValues = function(setToResolve, graph) {
-    var resolvedSet = [],
-        map = Logics.factSetToMap(setToResolve), index, i;
+    var turtleKey, foundFact, explicity, 
+        graph = this.resolveGraph(graph),
+        newInsertions = [];
 
-    graph = this.resolveGraph(graph);
-    for (var key in this.dict[graph]) {
-        for (i = 0; i < this.dict[graph][key].length; i++) {
-            index = map.indexOf(this.dict[graph][key][i]);
-            if (map[index]) {
-                resolvedSet.push(map[index]);
-                map[index] = undefined;
-            }
+    for (var i = 0; i < setToResolve.length; i++) {
+        if (setToResolve[i].explicit) {
+            explicity = "explicit";
+        } else {
+            explicity = "implicit";
+        } 
+        turtleKey = ParsingInterface.factToTurtle(setToResolve[i]);        
+        foundFact = this.getFactAt(turtleKey, graph, explicity);
+        if (foundFact) {
+            setToResolve[i] = foundFact;
+        } else {
+            this.setFactAt(setToResolve[i], turtleKey, graph, explicity);
+            newInsertions.push(setToResolve[i]);
         }
     }
-    for (i = 0; i < setToResolve.length; i++) {
-        if(setToResolve[i] !== undefined) {
-            resolvedSet.push(setToResolve[i]);
-        }
-    }
-    return resolvedSet;
-};
 
-/**
- * Gets all explicit facts from the dictionary.
- * @returns {Array}
- */
-Dictionary.prototype.implicitValues = function(graph) {
-    var values = [];
-    graph = this.resolveGraph(graph);
-    for (var key in this.dict[graph]) {
-        for (var i = 0; i < this.dict[graph][key].length; i++) {
-            if(!this.dict[graph][key][i].explicit) {
-                values.push(this.dict[graph][key][i]);
-            }
-        }
-    }
-    return values;
+    return newInsertions;
 };
 
 /**
@@ -287,7 +277,7 @@ Dictionary.prototype.findKeys = function(values, graph) {
 Dictionary.prototype.getFactFromStringRepresentation = function(factStr, graph) {
     graph = this.resolveGraph(graph);
     for (var key in this.dict[graph]) {
-        for (var i = 0; i < this.dict[graph][key].length; i++) {
+        for (var i in this.dict[graph][key]) {
             if (this.dict[graph][key][i].toString() == factStr) {
                 return {
                     key: key,
@@ -299,5 +289,19 @@ Dictionary.prototype.getFactFromStringRepresentation = function(factStr, graph) 
     }
     return false;
 };
+
+Dictionary.prototype.getFactAt = function(key, graph, explicity) {
+    if (this.dict[graph][key]) {
+        return this.dict[graph][key][explicity];
+    }
+    return undefined;
+}
+
+Dictionary.prototype.setFactAt = function(fact, key, graph, explicity) {
+    if (this.dict[graph][key] === undefined) {
+        this.dict[graph][key] = {};
+    }
+    this.dict[graph][key][explicity] = fact;
+}
 
 module.exports = Dictionary;
