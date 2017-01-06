@@ -1,0 +1,26 @@
+000000.000| ALWAYS| Logging started at 2016-12-29T10:45:55.873
+000000.003|   OKAY| Riot::RADS::Reader::RadsMain::Initialize: RADS library initializing with specified working directory "C:\Users\Mehdi\Documents\HyLAR".
+000000.003|   OKAY| Riot::RADS::Reader::RuntimeEnvironment::Create: Creating RADS runtime environment: RADS root directory = "C:/Users/Mehdi/Documents/HyLAR"
+000000.004|   WARN| Riot::RADS::Reader::RuntimeEnvironment::GetProjectTypeNameAndVersion: Did not find keywords "projects" or "solutions" in path C:/Users/Mehdi/Documents/HyLAR
+000000.004|  ERROR| Riot::RADS::Reader::RuntimeEnvironment::Create: RADS runtime environment creation failed because it was unable to get the project information.
+000000.004|  ERROR| Riot::RADS::Reader::RadsMain::Initialize: RADS library initialization failed to create the runtime environment.
+000000.004|  ERROR| Failed to initialize Rads library.
+000000.026|   OKAY| Unable to process data overlay file ./ToolsConfig.xml, defaulting to overlay now
+000000.026| ALWAYS| Data overlay start folder initialized to DATA, Content/Src
+000000.026| ALWAYS| GameClock LockToSystemClock time: 0.000000 diff: 0.026863
+000000.028| ALWAYS| Build Version: Version 6.24.169.4246 (Dec 12 2016/13:46:42) [PUBLIC] <Releases/6.24> ChangeList: 1694246
+000000.107| ALWAYS| Performing WSAStartup
+000000.117| ALWAYS| Started System Init
+000000.117| ALWAYS| Maestro Init
+000000.118| ALWAYS| Started ReplayDownloadManager thread.
+000000.118| ALWAYS| ReplayDownloader: ==== Fetch MetaData Phase ====
+000000.118| ALWAYS| ---- Waiting to fetch 5000
+000000.131| ALWAYS| Maestro completed init
+000000.131| ALWAYS| zip manifest, 'ClientZips.txt', not found (expected).
+000000.132| ALWAYS| WadFile mount: DATA/FINAL/Global.wad (FAILED)
+000000.132|  ERROR| Assertion failed!
+
+Expression: ALE-18967997
+
+Description: FATAL ERROR - WadFile mount failed: Global.wad
+000000.352|  ERROR| Crash Occurred

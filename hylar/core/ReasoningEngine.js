@@ -127,7 +127,8 @@ ReasoningEngine = {
                             insertionEvaluationLoop();
                         } else {                
                             additions = FeAdd.concat(FiAdd);
-                            deletions = FeDel.concat(FiDel);                            
+                            deletions = FeDel.concat(FiDel);
+                            F.remove(FiDel);                          
                             deferred.resolve({
                                 additions: additions,
                                 deletions: deletions

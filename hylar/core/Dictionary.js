@@ -193,7 +193,7 @@ Dictionary.prototype.getAndResolveValues = function(setToResolve, graph) {
     return values;
 };
 
-Dictionary.prototype.resolveValues = function(setToResolve, graph) {
+Dictionary.prototype.resolveValues = function(setToResolve, doRemove, graph) {
     var turtleKey, foundFact, explicity, 
         graph = this.resolveGraph(graph),
         newInsertions = [];
@@ -216,6 +216,10 @@ Dictionary.prototype.resolveValues = function(setToResolve, graph) {
 
     return newInsertions;
 };
+
+Dictionary.prototype.remove = function(setToRemove, graph) {
+
+}
 
 /**
  * Gets facts corresponding to the turtle triples,returns an object
