@@ -48,7 +48,7 @@ Logics = {
         var fR = [];
         for (var key in fs) {
             var fact = fs[key];
-            if(fact && !fact.explicit) {
+            if(!fact.explicit) {
                 fR.push(fact);
             }
         }
@@ -115,7 +115,9 @@ Logics = {
      * @returns {*}
      */
     causeMatchesFact: function(cause, fact) {
-        return this.causeMemberMatchesFactMember(cause.subject, fact.subject) && this.causeMemberMatchesFactMember(cause.predicate, fact.predicate) && this.causeMemberMatchesFactMember(cause.object, fact.object);
+        return this.causeMemberMatchesFactMember(cause.predicate, fact.predicate) 
+            && this.causeMemberMatchesFactMember(cause.subject, fact.subject)
+            && this.causeMemberMatchesFactMember(cause.object, fact.object);
     },
 
     /**
@@ -126,9 +128,24 @@ Logics = {
      * @returns {boolean}
      */
     causeMemberMatchesFactMember: function(causeMember, factMember) {
-        if (this.isVariable(causeMember)) {
+        if(causeMember == factMember) {
             return true;
-        } else if(causeMember == factMember) {
+        } else if (causeMember.indexOf('?') === 0) {
+            return true;
+        } else {
+            return false;
+        }
+    },
+
+    /**
+     * Return true if the two atoms are either both variables, or
+     * identical URIs.
+     * @returns {boolean}
+     */
+    similarAtoms: function(atom1, atom2) {
+        if (this.isVariable(atom1) && this.isVariable(atom2) ) {
+            return true;
+        } else if(atom1 == atom2) {
             return true;
         } else {
             return false;
@@ -152,19 +169,6 @@ Logics = {
     },
 
     /**
-     * Invalidates a fact set.
-     * @param fs1
-     * @param fs2
-     * @returns {Array}
-     */
-    invalidate: function(fs1) {
-        for (var i = 0; i < fs1.length; i++) {
-            fs1[i].valid = false;
-        }
-        return fs1;
-    },
-
-    /**
      * Substracts each set.
      * Not to be used in tag-based reasoning.
      * @param _set1
@@ -177,7 +181,7 @@ Logics = {
         for (var i = 0; i < _set1.length; i++) {
             flagEquals = false;
             for(var j = 0; j < _set2.length; j++) {
-                if (_set1[i].toString() == _set2[j].toString()) {
+                if (_set1[i].asString == _set2[j].asString) {
                     flagEquals = true;
                     break;
                 }
@@ -203,34 +207,10 @@ Logics = {
         }
     },
 
-    decomposeRuleHeadsIntoSeveralRules: function(ruleSet) {
-        var newRuleSet = [];
-        for (var i = 0; i < ruleSet.length; i++) {
-            for (var j = 0; j < ruleSet[i].consequences.length; j++) {
-                newRuleSet.push(new Rule(ruleSet[i].causes, [ruleSet[i].consequences[j]]));
-            }
-        }
-        return newRuleSet;
-    },
-
-    factIsGround: function(fact) {
-        return !this.isVariable(fact.subject) && !this.isVariable(fact.predicate) && !this.isVariable(fact.object);
-    },
-
-    getInconsistencies: function(fs) {
-        var inconsistencies = [];
-        for (var i = 0; i < fs.length; i++) {
-           if ((fs[i] !== undefined) && (fs[i].falseFact)) {
-               inconsistencies = fs[i].causedBy;
-           }
-        }
-        return inconsistencies;
-    },
-
     updateValidTags: function(kb, additions, deletions) {
         var newAdditions = [],
             resolvedAdditions = [],
-            kbMap = this.factSetToMap(kb), index;
+            kbMap = kb.map(function(x) { return x.toRaw(); }), index;
         for (var i = 0; i < additions.length; i++) {
             index = kbMap.indexOf(additions[i].toRaw());
             if (index !== -1) {
@@ -306,7 +286,7 @@ Logics = {
     combineImplicitCauses: function(implicitFacts) {
         var combination = implicitFacts[0].causedBy;
         for (var i = 1; i < implicitFacts.length; i++) {
-            combination = this.disjunctCauses(combination, implicitFacts[i].causedBy);
+            combination = this.disjunctCauses(combination, implicitFacts[i].causedBy)
         }
         return combination;
     },
@@ -332,8 +312,7 @@ Logics = {
             foundFactIndex;
         for (var i = 0; i < fs.length; i++) {
             if (fs[i] !== undefined) {
-                foundFactIndex = fs[i].appearsIn(unifiedSet);
-                if (foundFactIndex) {
+                if (foundFactIndex = fs[i].appearsIn(unifiedSet)) {
                     unifiedSet[foundFactIndex].causedBy = this.uniquesCausedBy(fs[i].causedBy, unifiedSet[foundFactIndex].causedBy);
                     unifiedSet[foundFactIndex].consequences = Utils.uniques(fs[i].consequences, unifiedSet[foundFactIndex].consequences);                    
                     fs[i].doPropagate(unifiedSet[foundFactIndex]);                   
@@ -343,21 +322,6 @@ Logics = {
             }
         }
         return unifiedSet;
-    },
-
-    unifyAndCheck: function(subSet, updatingSet, kb) {
-        var initialLength = updatingSet.length;
-
-        subSet = this.unifyFactSet(subSet);
-        this.combine(updatingSet, subSet);
-
-        initialLength += this.checkExplicitEquivalents(subSet, kb);
-
-        if (initialLength < updatingSet.length) {
-            return true;
-        } else {
-            return false;
-        }
     },
 
     unify: function(subSet, updatingSet) {
@@ -373,24 +337,8 @@ Logics = {
         }
     },
 
-    checkExplicitEquivalents: function(subSet, kb) {
-        var countedEquivalents = 0;
-        for (var i = 0; i < kb.length; i++) {
-            for (var j = 0; j < subSet.length; j++) {
-                if (subSet[j] !== undefined) {
-                    if(kb[i].explicit && kb[i].isAlternativeEquivalentOf(subSet[j])) {
-                        this.addAlternativeDerivationAsCausedByFromImplicit(kb, kb[i], subSet[j], true);
-                        countedEquivalents++;
-                        delete subSet[j];
-                    }
-                }
-            }
-        }
-        return countedEquivalents;
-    },
-
     uniquesCausedBy: function(cb1, cb2) {
-        var min, max, newCb, found;
+        var min, max, newCb = [], found;
 
         if (cb1.length >= cb2.length) {
             min = cb2;
@@ -400,20 +348,25 @@ Logics = {
             max = cb2;
         }
 
-        newCb = min.slice();
-
         for (var i = 0; i < max.length; i++) {
             found = false;
             for (var j = 0; j < min.length; j++) {
-                if (Utils.equivalentSets(max[i], min[j])) {
+                if (this.containsFacts(min[j], max[i])) {
                     found = true;
+                    if (min.length != max.length) {
+                        min[j] = max[i];
+                    }
                     break;
                 }
             }
+
             if (!found) {
                 newCb.push(max[i]);
             }
         }
+
+        newCb = newCb.concat(min.slice());
+
         return newCb;
     },
 
@@ -442,7 +395,7 @@ Logics = {
         if (body.toLowerCase().indexOf('false') !== -1) {
             consequences.push(new Fact('FALSE'));
         } else {
-            for (i = 0; i < bodyTriples.length; i++) {
+            for (var i = 0; i < bodyTriples.length; i++) {
                 atoms = bodyTriples[i].match(atomRegex).splice(1);
                 consequences.push(new Fact(atoms[1], atoms[0], atoms[2]));
             }
@@ -458,29 +411,9 @@ Logics = {
     skolemize: function(facts, elem) {
         var skolem = '';
         for (var i = 0; i < facts.length; i++) {
-            skolem += facts[i].toString();
+            skolem += facts[i].asString;
         }
         return md5(skolem) + elem;
-    },
-
-
-    /**
-     * Returns implicit facts from the set.
-     * @param fs
-     * @returns {Array}
-     */
-    putConsequences: function(fs, consequences) {
-        for (var key in fs) {
-            var fact = fs[key];
-            if(!fact.explicit) {
-                fact.consequences = fact.consequences.concat(consequences);
-            }
-        }
-        return;
-    },
-
-    factSetToMap: function(set) {
-        return set.map(function(x) { return x.toRaw(); });
     }
 };
 

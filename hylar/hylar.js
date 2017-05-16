@@ -8,13 +8,14 @@ var fs = require('fs'),
 
 var Promise = require('bluebird');
 
+var emitter = require('./core/Emitter');
+
 var Dictionary = require('./core/Dictionary'),
     ParsingInterface = require('./core/ParsingInterface'),
     StorageManager = require('./core/StorageManager'),
     Reasoner = require('./core/Reasoner'),
     OWL2RL = require('./core/OWL2RL'),
     Fact = require('./core/Logics/Fact'),
-    Errors = require('./core/Errors'),
     Utils = require('./core/Utils');
 
 var logFile = 'hylar.log';
@@ -57,16 +58,12 @@ Hylar = function() {
     this.rules = OWL2RL.test;
     this.queryHistory = [];
     this.sm.init();
-    this.status = {
-        classifying: false,
-        querying: false
-    };    
-    //this.setTagBased();
+    this.computeRuleDependencies();  
 };
 
-Hylar.prototype.toggleClassifyingStatus = function() {
-    this.status.classifying = !(this.status.classifying);
-};
+Hylar.prototype.computeRuleDependencies = function() {
+    Reasoner.updateRuleDependencies(this.rules);        
+};      
 
 Hylar.prototype.clean = function() {
     this.dict = new Dictionary();
@@ -139,7 +136,7 @@ Hylar.prototype.updateReasoningMethod = function(method) {
  */
 Hylar.prototype.load = function(ontologyTxt, mimeType, keepOldValues, graph, reasoningMethod) {
     var that = this;
-    this.toggleClassifyingStatus();
+    emitter.emit('classif-started');
     this.updateReasoningMethod(reasoningMethod);
 
     if (!keepOldValues) {
@@ -161,21 +158,24 @@ Hylar.prototype.treatLoad = function(ontologyTxt, mimeType, graph) {
                     console.notify('Store initialized successfully.');
                     return that.classify();
                 });
+            break;
         case 'application/rdf+xml':
             return that.sm.loadRdfXml(ontologyTxt, graph)
                 .then(function() {
                     return that.classify();
                 });
+            break;
         case false:
             console.error('Unrecognized or unsupported mimetype. ' +
                 'Supported formats are rdf/xml, jsonld, turtle, n3');
             return false;
+            break;
         default:
+
             return that.sm.load(ontologyTxt, mimeType, graph)
                 .then(function() {
                     return that.classify();
-                }, function(error) {
-                    that.toggleClassifyingStatus();
+                }, function(error) {                    
                     console.error(error);
                     throw error;
                 });
@@ -203,8 +203,10 @@ Hylar.prototype.query = function(query, reasoningMethod) {
                         .then(function(data) {
                             return that.query(ParsingInterface.buildUpdateQueryWithConstructResults(sparql, data));
                         });
+                } else {
+                    return this.treatUpdateWithGraph(query);
                 }
-                return this.treatUpdateWithGraph(query);
+                break;
             default:
                 if (this.rMethod == Reasoner.process.it.incrementally) {
                     return that.sm.query(query);
@@ -293,19 +295,19 @@ Hylar.prototype.setDictionaryContent = function(dict) {
     this.dict.setContent(dict);
 };
 
-Hylar.prototype.import = function(dictContent) {
-    var query = "INSERT DATA { ";
+Hylar.prototype.import = function(dictionary) {
+    var importedTriples = "",
+        dictContent = dictionary.dict;
     for (var graph in dictContent) {
         for (var triple in dictContent[graph]) {
-            query += triple.replace(/(\n|\r)/g, '');
+            importedTriples += triple.replace(/(\n|\r|\\)/g, '') + "\n";
             for (var i = 0; i < dictContent[graph][triple].length; i++) {
                 dictContent[graph][triple][i].__proto__ = Fact.prototype;
             }
         }
     }
-    query += " }";
     this.setDictionaryContent(dictContent);
-    return this.sm.query(query);
+    return this.sm.load(importedTriples, "text/turtle");
 };
 
 Hylar.prototype.checkConsistency = function() {
@@ -322,7 +324,7 @@ Hylar.prototype.checkConsistency = function() {
     return {
         consistent: isConsistent,
         trace: inconsistencyReasons
-    };
+    }
 };
 
 Hylar.prototype.isTagBased = function() {
@@ -372,9 +374,10 @@ Hylar.prototype.treatUpdate = function(update, type) {
             }
             FeIns = ParsingInterface.triplesToFacts(iTriples, true, (that.rMethod == Reasoner.process.it.incrementally));
             FeDel = ParsingInterface.triplesToFacts(dTriples, true, (that.rMethod == Reasoner.process.it.incrementally));
-            return Reasoner.evaluate(FeIns, FeDel, that.getDictionary(), that.rMethod, that.rules);
+            return Reasoner.evaluate(FeIns, FeDel, F, that.rMethod, that.rules)
 
         }).then(function(derivations) {
+            that.registerDerivations(derivations, graph);
             insDel = {
                 insert: ParsingInterface.factsToTurtle(derivations.additions),
                 delete: ParsingInterface.factsToTurtle(derivations.deletions)
@@ -385,12 +388,12 @@ Hylar.prototype.treatUpdate = function(update, type) {
 
         .then(function(obj) {
             turtle = obj;
-            if(turtle.delete !== '') return that.sm.delete(turtle.delete, graph);
+            if(turtle.delete != '') return that.sm.delete(turtle.delete, graph);
             else return true;
         })
 
         .then(function() {
-            if(turtle.insert !== '') return that.sm.insert(turtle.insert, graph);
+            if(turtle.insert != '') return that.sm.insert(turtle.insert, graph);
             else return true;
         });
 };
@@ -417,7 +420,7 @@ Hylar.prototype.treatSelectOrConstruct = function(query) {
                 return {
                     results: r,
                     filtered: Reasoner.engine.tagFilter(facts, that.dict.values(graph))
-                };
+                }
             })
             .then(function(r) {
                 temporaryData = that.dict.findKeys(r.filtered, graph).found.join(' ');
@@ -448,12 +451,11 @@ Hylar.prototype.registerDerivations = function(derivations, graph) {
         }
     }
 
-    for (i = 0; i < factsToBeAdded.length; i++) {
+    for (var i = 0; i < factsToBeAdded.length; i++) {
         this.dict.put(factsToBeAdded[i], graph);
     }
 
     console.notify('Registered successfully.');
-    this.dict.purgeOld();
 };
 
 /**
@@ -462,9 +464,9 @@ Hylar.prototype.registerDerivations = function(derivations, graph) {
  * @returns {*}
  */
 Hylar.prototype.classify = function() {
-    var that = this, factsChunk, chunks = [], chunksNb = 4000, insertionPromises = [];
+    var that = this, factsChunk, chunks = [], chunksNb = 5000, insertionPromises = [];
     console.notify('Classification started.');
-
+    
     return this.sm.query('CONSTRUCT { ?a ?b ?c } WHERE { ?a ?b ?c }')
         .then(function(r) {
             var facts = [], triple, _fs, f;
@@ -486,23 +488,25 @@ Hylar.prototype.classify = function() {
                 }
 
             }
-            return Reasoner.evaluate(facts, [], that.getDictionary(), that.rMethod, that.rules);
+            return Reasoner.evaluate(facts, [], [], that.rMethod, that.rules);
         })
-        .then(function(r) {                
+        .then(function(r) {                                   
+            that.registerDerivations(r);
             for (var i = 0, j = r.additions.length; i < j; i += chunksNb) {
                 factsChunk = r.additions.slice(i,i+chunksNb);
                 chunks.push(ParsingInterface.factsToTurtle(factsChunk));
             }
             return;
         })
-        .then(function() {
+        .then(function() {            
             console.notify('Classification succeeded.');
+            
             return Promise.reduce(chunks, function(previous, chunk) {                
                 return that.sm.insert(chunk);
             }, 0);
         })
         .then(function() {
-            that.toggleClassifyingStatus();
+            emitter.emit('classif-ended');
             return true;
         });
 };

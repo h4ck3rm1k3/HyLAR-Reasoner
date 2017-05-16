@@ -5,11 +5,11 @@
 var Fact = require('./Fact');
 var Logics = require('./Logics');
 var Utils = require('../Utils');
-var AnnotatedQuery = require('./AnnotatedQuery');
+
+var emitter = require('../Emitter');
 
 var q = require('q');
-var CHR = require('chr');
-var chr = CHR();
+
 
 /**
  * Core solver used to evaluate rules against facts
@@ -17,7 +17,6 @@ var chr = CHR();
  */
 
 Solver = {
-
     /**
      * Evaluates a set of rules over a set of facts.
      * @param rs
@@ -38,34 +37,12 @@ Solver = {
                 for (var i = 0; i < consTab.length; i++) {
                     cons = cons.concat(consTab[i]);
                 }
-                deferred.resolve(cons);
+                deferred.resolve({cons: cons});
             });
         } catch(e) {
             deferred.reject(e);
         }
         return deferred.promise;
-    },
-
-    evaluateRuleSetThroughCHR: function(rs, facts) {
-        var promises = [];
-        for (var key in rs) {
-            chr(rs[key].toCHR());
-        }
-        for (key in facts) {
-            try {
-                promises.push(
-                    chr.t(
-                        facts[key].subjectCHR(), 
-                        facts[key].predicateCHR(), 
-                        facts[key].objectCHR()
-                    ));
-            } catch (e) {}
-        }
-        Promise.all(promises).then(function(r) {
-            {}
-        }).catch(function(e) {
-            {}
-        });
     },
 
     /**
@@ -86,7 +63,7 @@ Solver = {
                 if (mappingList[i]) {
                     // Replace mappings on all consequences
                     for (var j = 0; j < rule.consequences.length; j++) {                        
-                        consequences.push(this.substituteFactVariables(mappingList[i], rule.consequences[j], []));
+                        consequences.push(this.substituteFactVariables(mappingList[i], rule.consequences[j], [], rule));
                         
                     }
                 }
@@ -116,38 +93,10 @@ Solver = {
             for (var i = 0; i < mappingList.length; i++) {
                 if (mappingList[i]) {
                     // Replace mappings on all consequences
-                    causes = Logics.buildCauses(mappingList[i].__facts__);                    
-                    for (var j = 0; j < rule.consequences.length; j++) {
-                        consequence = this.substituteFactVariables(mappingList[i], rule.consequences[j], causes);
-                        //if (Logics.filterKnownOrAlternativeImplicitFact(consequence, kb, resolvedImplicitFacts)) {
-                        consequences.push(consequence);
-                        //}
-                    }
-                    Logics.putConsequences(mappingList[i].__facts__, consequences);                    
-                }
-            }
-            deferred.resolve(consequences);
-        } catch(e) {
-            deferred.reject(e);
-        }
-
-        return deferred.promise;
-    },
-
-    /*evaluateThroughRestrictionWithTagging: function(rule, kb) {
-        var mappingList = this.getMappings(rule, kb), deferred = q.defer(),
-            consequences = [], consequence, causes, implicitCauses;
-
-        this.checkOperators(rule, mappingList);
-
-        try {
-            for (var i = 0; i < mappingList.length; i++) {
-                if (mappingList[i]) {
-                    // Replace mappings on all consequences
                     causes = Logics.buildCauses(mappingList[i].__facts__);
                     iterationConsequences = [];
                     for (var j = 0; j < rule.consequences.length; j++) {
-                        consequence = this.substituteFactVariables(mappingList[i], rule.consequences[j], causes);
+                        consequence = this.substituteFactVariables(mappingList[i], rule.consequences[j], causes, rule);
                         //if (Logics.filterKnownOrAlternativeImplicitFact(consequence, kb, resolvedImplicitFacts)) {
                         consequences.push(consequence);
                         iterationConsequences.push(consequence);
@@ -166,13 +115,13 @@ Solver = {
         }
 
         return deferred.promise;
-    },*/
+    },
 
     checkOperators: function(rule, mappingList) {
         var causes = rule.operatorCauses,
             operationToEvaluate, substitutedFact;
 
-        if (rule.operatorCauses.length === 0) return mappingList;
+        if (rule.operatorCauses.length == 0) return mappingList;
 
         for (var i = 0; i < mappingList.length; i++) {
             for (var j = 0; j < causes.length; j++) {
@@ -199,7 +148,7 @@ Solver = {
         mappingList = [rule.causes[i]]; // Init with first cause
 
         while (i < rule.causes.length) {
-            mappingList = this.substituteNextCauses(mappingList, rule.causes[i+1], facts, rule.constants);            
+            mappingList = this.substituteNextCauses(mappingList, rule.causes[i+1], facts, rule.constants, rule);
             i++;
         }        
         return mappingList;
@@ -227,7 +176,7 @@ Solver = {
      * @param facts
      * @returns {Array}
      */
-    substituteNextCauses: function(currentCauses, nextCause, facts, constants) {
+    substituteNextCauses: function(currentCauses, nextCause, facts, constants, rule) {
         var substitutedNextCauses = [],
             mappings = [];
 
@@ -246,7 +195,7 @@ Solver = {
                 }
 
                 // Update the mapping using pattern matching
-                newMapping = this.factMatches(facts[j], currentCauses[i], mapping, constants);
+                newMapping = this.factMatches(facts[j], currentCauses[i], mapping, constants, rule);
 
                 // If the current fact matches the current cause ...
                 if (newMapping) {
@@ -279,7 +228,7 @@ Solver = {
      * @param mapping
      * @returns {*}
      */
-    factMatches: function(fact, ruleFact, mapping, constants) {
+    factMatches: function(fact, ruleFact, mapping, constants, rule) {
         var localMapping = {};
     
         // Checks and update localMapping if matches     
@@ -291,7 +240,9 @@ Solver = {
         }
         if (!this.factElemMatches(fact.subject, ruleFact.subject, mapping, localMapping)) {
             return false;
-        }    
+        }
+
+        emitter.emit('rule-fired', rule.name);
 
         // If an already existing uri has been mapped...
         for (var key in localMapping) {
@@ -303,7 +254,7 @@ Solver = {
         // Merges local and global mapping
         for (var mapKey in mapping) {
             if (mapKey == '__facts__') {
-                localMapping[mapKey] = Utils.insertUnique(mapping[mapKey], fact);
+                localMapping[mapKey] = Utils.uniques(mapping[mapKey], [fact]);
             } else {
                 for (key in localMapping) {
                     if (mapping[mapKey] == localMapping[key]) {
@@ -321,7 +272,7 @@ Solver = {
     },
 
     factElemMatches: function(factElem, causeElem, globalMapping, localMapping) {
-        if (Logics.isVariable(causeElem)) {
+        if (causeElem.indexOf('?') === 0) {
             if (globalMapping[causeElem] && (globalMapping[causeElem] != factElem)) {
                 return false;
             } else {
@@ -383,101 +334,6 @@ Solver = {
         }
 
         return substitutedFact;
-    },
-
-    substitute: function(atom, mappings, causedBy, graphs) {
-        var substitutedFacts = [],
-            substitutedFact;
-
-        for (var i = 0; i < mappings.length; i++) {
-            substitutedFact = this.substituteFactVariables(mappings[i], atom, causedBy, graphs);
-            if(substitutedFact && Logics.factIsGround(substitutedFact)) {
-                substitutedFacts.push(substitutedFact);
-            }
-        }
-
-        return substitutedFacts;
-    },
-
-    matchHead: function(ruleSet, fact) {
-        var tuples = [],
-            atom;
-
-        for (var i = 0; i < ruleSet.length; i++) {
-            var mapping = {},
-                annotatedQuery = new AnnotatedQuery(),
-                head = ruleSet[i].consequences[0],
-                ruleConstants = ruleSet[i].constants;
-
-            if (ruleSet[i].consequences.length > 1) {
-                throw 'B/F algorithm expects an unique consequence (HEAD)!';
-            }
-
-            mapping = this.factMatches(fact, head, mapping, ruleConstants);
-
-            if (mapping) {
-                for (var j = 0; j < ruleSet[i].causes.length; j++) {
-                    atom = new AnnotatedQuery.atom(ruleSet[i].causes[j]);
-                    annotatedQuery.addAtom(atom);
-                }
-
-                tuples.push({
-                    mapping: mapping,
-                    rule: ruleSet[i],
-                    annotatedQuery: annotatedQuery
-                });
-            }
-        }
-
-        return tuples;
-    },
-
-    matchBody: function(ruleSet, fact) {
-        var tuples = [];
-
-        for (var i = 0; i < ruleSet.length; i++) {
-            var mapping = {}, annotateDiff = true,
-                currentMapping, atom,
-                annotatedQuery = new AnnotatedQuery();
-
-            for (var j = 0; j < ruleSet[i].causes.length; j++) {
-                currentMapping = this.factMatches(fact, ruleSet[i].causes[j], mapping, ruleSet[i].constants);
-                if (currentMapping) {
-                    annotateDiff = false;
-                    mapping = currentMapping;
-                }
-                annotatedQuery.addAtom(new AnnotatedQuery.atom(ruleSet[i].causes[j], annotateDiff));
-            }
-            annotatedQuery.addAtom(new AnnotatedQuery.atom(ruleSet[i].consequences[0], annotateDiff));
-
-            if (!Utils.emptyObject(mapping)) {
-                tuples.push({
-                    mapping: (mapping || {}),
-                    rule: ruleSet[i],
-                    annotatedQuery: annotatedQuery
-                });
-            }
-
-        }
-        return tuples;
-    },
-
-    eval: function(X, annotatedQuery, Y, mapping, constants) {
-        var mappings = [mapping], currentMapping,
-            XWithoutY = Logics.minus(X, Y);
-
-            for (var i = 0; i < X.length; i++) {
-                for (var j = 0; j < annotatedQuery.atomsLen(); j++) {
-                    currentMapping = this.factMatches(X[i], annotatedQuery.getAtom(j).value, mapping, constants);
-                    if (currentMapping) {
-                        mapping = currentMapping;
-                        mappings.push(mapping);
-                    }
-                }
-
-            }
-
-        return mappings;
     }
 };
 

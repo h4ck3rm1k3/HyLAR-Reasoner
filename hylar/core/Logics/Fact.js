@@ -12,11 +12,11 @@ var Utils = require('../Utils');
  * @param originFacts array of facts causing this
  * @constructor
  */
-Fact = function(pred, sub, obj, originConjs, expl, graphs, consequences, notUsingValidity, fromTriple) {
+Fact = function(pred, sub, obj, causes, expl, graphs, consequences, notUsingValidity, fromTriple) {
     if(pred == 'FALSE') {
         this.falseFact = 'true';
     }
-    if (originConjs === undefined) originConjs = [];
+    if (causes === undefined) causes = [];
     if (expl === undefined) expl = true;
     if (graphs === undefined) graphs = [];
     if (consequences === undefined) consequences = [];
@@ -28,9 +28,10 @@ Fact = function(pred, sub, obj, originConjs, expl, graphs, consequences, notUsin
     this.consequences = consequences;
     this.fromTriple = fromTriple;
 
-    this.causedBy = originConjs;
+    this.causedBy = causes;
     this.explicit = expl;
     this.graphs = graphs;
+
     if (!notUsingValidity && this.explicit) {
         this.valid = true;
     }
@@ -50,6 +51,8 @@ Fact = function(pred, sub, obj, originConjs, expl, graphs, consequences, notUsin
     if (Utils.isOperator(this.predicate)) {
         this.operatorPredicate = true;
     }
+
+    this.asString = this.asPlainString();
 };
 
 Fact.prototype = {
@@ -58,17 +61,22 @@ Fact.prototype = {
      * Convenient method to stringify a fact.
      * @returns {string}
      */
-    toString: function() {
+
+    asPlainString: function() {
         var e, spo;
 
         if(this.falseFact) {
             spo = 'FALSE';
         } else {
-            spo = '(' + this.subject + ' ' + this.predicate + ' ' + this.object + ')';
+            spo = '(' + Utils.removeBeforeSharp(this.subject) + ', ' + Utils.removeBeforeSharp(this.predicate) + ', ' + Utils.removeBeforeSharp(this.object) + ')'
         }
 
         if (this.explicit) { e = 'E'; } else { e = 'I'; }
         return e + spo;
+    },
+
+    toString: function() {
+        return this.asString;
     },
 
     toCHR: function(mapping) {
@@ -93,11 +101,13 @@ Fact.prototype = {
 
     toRaw: function() {
         var spo;
+
         if(this.falseFact) {
             spo = 'FALSE';
         } else {
             spo = '(' + this.subject + ' ' + this.predicate + ' ' + this.object + ')';
         }
+
         return spo;
     },
 
@@ -141,6 +151,14 @@ Fact.prototype = {
         return true;
     },
 
+    hasSimilarPatternWith: function(fact) {
+         return (
+            Logics.similarAtoms(this.subject, fact.subject) &&
+            Logics.similarAtoms(this.predicate, fact.predicate) &&
+            Logics.similarAtoms(this.object, fact.object)
+         );
+    },
+
     /**
      * Returns the fact if it appears in a set of facts.
      * Returns false otherwise.
@@ -172,12 +190,12 @@ Fact.prototype = {
             return undefined;
         } else {
             var valid,
-                conj = this.causedBy,
+                causes = this.causedBy,
                 explicitFact;
-            for (var i = 0; i < conj.length; i++) {
+            for (var i = 0; i < causes.length; i++) {
                 valid = true;
-                for (var j = 0; j < conj[i].length; j++) {
-                    explicitFact = conj[i][j];
+                for (var j = 0; j < causes[i].length; j++) {
+                    explicitFact = causes[i][j];
                     valid = valid && explicitFact.valid;
                 }
                 if (valid) {
@@ -186,29 +204,6 @@ Fact.prototype = {
             }
             return false;
         }
-    },
-
-    implicitlyDerives: function(kb) {
-        var factsDerived = [];
-        for (var i = 0; i < kb.length; i++) {
-            if (this.appearsIn(kb[i].implicitCauses)) {
-                factsDerived.push(kb[i]);
-            }
-        }
-        return factsDerived;
-    },
-
-    explicitlyDerives: function(kb) {
-        var factsDerived = [];
-        for (var i = 0; i < kb.length; i++) {
-            for (var j = 0; j < kb[i].causedBy.length; j++) {
-                if (this.appearsIn(kb[i].causedBy[j])) {
-                    factsDerived.push(kb[i]);
-                    break;
-                }
-            }
-        }
-        return factsDerived;
     },
 
     derives: function(kb) {
@@ -226,27 +221,6 @@ Fact.prototype = {
             }
         }
         return factsDerived;
-    },
-
-    isAlternativeEquivalentOf: function(fact) {
-        if(!fact.explicit) return false;
-        return (
-            (fact.subject == this.subject) &&
-            (fact.predicate == this.predicate) &&
-            (fact.object == this.object) &&
-            (fact.explicit != this.explicit)
-        );
-    },
-
-    findAlternativeEquivalent: function(kb) {
-        var alternativeEquivalent;
-        for (var i = 0; i < kb.length; i++) {
-            alternativeEquivalent = this.isAlternativeEquivalentOf(kb[i]);
-            if (alternativeEquivalent) {
-                return kb[i];
-            }
-        }
-        return false;
     },
 
     doPropagate: function(keptFact) {        

@@ -63,14 +63,18 @@ StorageManager.prototype.loadRdfXml = function(data) {
  */
 StorageManager.prototype.query = function(query) {
     var deferred = q.defer();    
-    query = query.replace(/\\/g, '').replace(/(\n|\r)/g, '');          
-    this.storage.execute(query, function (err, r) {
-        if(err) {            
-            deferred.reject(err);
-        } else {
-            deferred.resolve(r);
-        }
-    });
+    query = query.replace(/\\/g, '').replace(/(\n|\r)/g, '');    
+    try {      
+        this.storage.execute(query, function (err, r) {
+            if(err) {            
+                deferred.reject(err);
+            } else {
+                deferred.resolve(r);
+            }
+        });
+    } catch(e) {
+        deferred.resolve(true);
+    }
     return deferred.promise;
 };
 
@@ -83,11 +87,12 @@ StorageManager.prototype.query = function(query) {
 StorageManager.prototype.load = function(data, format) {
     var deferred = q.defer();
 
-    this.storage.load(format, data, function (err, r) {
-        console.notify(r + ' triples loaded.');
+    this.storage.load(format, data, function (err, r) {                
         if(err) {
+            console.error(err.toString());
             deferred.reject(err);
         } else {
+            console.notify(r + ' triples loaded.');
             deferred.resolve(r);
         }
     });
@@ -162,18 +167,6 @@ StorageManager.prototype.regenerateSideStore = function() {
     new rdfstore.create(function(err, store) {
         that.sideStore = store;
         deferred.resolve();
-    });
-    return deferred.promise;
-};
-
-StorageManager.prototype.loadOntologyIntoSideStore = function(data, format) {
-    var deferred = q.defer();
-    this.sideStore.load(format, data, function (err, r) {
-        if(err) {
-            deferred.reject(err);
-        } else {
-            deferred.resolve(r);
-        }
     });
     return deferred.promise;
 };

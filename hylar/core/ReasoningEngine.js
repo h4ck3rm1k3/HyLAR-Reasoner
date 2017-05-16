@@ -14,7 +14,6 @@ var q = require('q');
  */
 
 ReasoningEngine = {
-
     /**
      * A naive reasoner that recalculates the entire knowledge base.
      * @deprecated
@@ -64,12 +63,12 @@ ReasoningEngine = {
      * @param FeDel set of assertions to be deleted
      */
     incremental: function (FeAdd, FeDel, F, R) {        
-        var Rdel = [], Rred, Rins = [],
+        var Rdel = [], Rred = [], Rins = [],
             FiDel = [], FiAdd = [],
             FiDelNew = [], FiAddNew = [],
             superSet = [], Fe, Fi, deferred = q.defer(),
             resolvedValues, additions, deletions;
-            
+
             // Guarantees unicity of FeAdd or FiAdd
             if (FeAdd.length > 0) {
                  resolvedValues = F.getAndResolveValues(FeAdd);
@@ -80,19 +79,21 @@ ReasoningEngine = {
             }
 
             Fe = resolvedValues.explicit;
-            Fi = resolvedValues.implicit;            
+            Fi = resolvedValues.implicit;
 
-            var startAlgorithm = function() {
+            deferred = q.defer(),
+
+            startAlgorithm = function() {
                 overDeletionEvaluationLoop();
             },
 
             overDeletionEvaluationLoop = function() {
-                FiDel = FiDel.concat(FiDelNew);
+                FiDel = Utils.uniques(FiDel, FiDelNew);
                 Rdel = Logics.restrictRuleSet(R, Utils.uniques(FeDel, FiDel));
-                Solver.evaluateRuleSet(Rdel, Fi.concat(Fe, FeDel))
+                Solver.evaluateRuleSet(Rdel, Utils.uniques(Utils.uniques(Fi, Fe), FeDel))
                     .then(function(values) {
-                        FiDelNew = F.resolveValues(values);
-                        if (FiDelNew.length > 0) {
+                        FiDelNew = values.cons;
+                        if (Utils.uniques(FiDel, FiDelNew).length > FiDel.length) {
                             overDeletionEvaluationLoop();
                         } else {
                             Fe = Logics.minus(Fe, FeDel);
@@ -107,8 +108,8 @@ ReasoningEngine = {
                 Rred = Logics.restrictRuleSet(R, FiDel);
                 Solver.evaluateRuleSet(Rred, Fe.concat(Fi))
                     .then(function(values) {
-                        FiAddNew = F.resolveValues(values);
-                        if (FiAddNew.length > 0) {
+                        FiAddNew = F.resolveValues(values.cons);
+                        if (Utils.uniques(FiAdd, FiAddNew).length > FiAdd.length) {
                             rederivationEvaluationLoop();
                         } else {
                             insertionEvaluationLoop();
@@ -116,158 +117,31 @@ ReasoningEngine = {
                     });
             },
 
-            insertionEvaluationLoop = function() {         
-                FiAdd = FiAdd.concat(FiAddNew);
-                superSet = Fe.concat(Fi, FeAdd, FiAdd);
+            insertionEvaluationLoop = function() {
+                FiAdd = Utils.uniques(FiAdd, FiAddNew);
+                superSet = Utils.uniques(Utils.uniques(Utils.uniques(Fe, Fi), FeAdd), FiAdd);
                 Rins = Logics.restrictRuleSet(R, superSet);
                 Solver.evaluateRuleSet(Rins, superSet)
                     .then(function(values) {
-                        FiAddNew = F.resolveValues(values);                        
-                        if (FiAddNew.length > 0) {
+                        FiAddNew = F.resolveValues(values.cons);
+                        if (!Utils.containsSubset(FiAdd, FiAddNew)) {
                             insertionEvaluationLoop();
                         } else {                
                             additions = FeAdd.concat(FiAdd);
                             deletions = FeDel.concat(FiDel);
-                            F.remove(FiDel);                          
+                            F.remove(FiDel);
                             deferred.resolve({
                                 additions: additions,
                                 deletions: deletions
                             });
                         }
+                    }).fail(function(err) {
+                        console.error(err);
                     });
             };
 
         startAlgorithm();
         return deferred.promise;
-    },
-
-    incrementalBf: function (FeAdd, FeDel, F, R) {
-
-        R = Logics.decomposeRuleHeadsIntoSeveralRules(R);
-
-        var backwardForwardDelete = function(E, I, FeDel, R) {
-            var C = new Utils.IterableStructure(), D = new Utils.IterableStructure(), P = new Utils.IterableStructure(),
-                Y = [], O = new Utils.IterableStructure(), S = [],
-                V = new Utils.IterableStructure(), IWithoutO, DWithoutP, IWithoutS,
-                fact, tuples, evalRes;
-
-            var checkProvability = function(fact) {
-                var tuples, smallestSubstitutions, substitutedRuleFacts;
-
-                if (!C.add(fact)) {
-                    return;
-                }
-
-                saturate();
-
-                if (P.contains(fact)) {
-                    return;
-                }
-
-                tuples = Solver.matchHead(R, fact);
-
-                for (var i = 0; i < tuples.length; i++) {
-                    smallestSubstitutions = Solver.eval(IWithoutS, tuples[i].annotatedQuery, [], tuples[i].mapping, tuples[i].rule.constants);
-                    for (var j = 0; j < tuples[i].rule.causes.length; j++) {
-                        substitutedRuleFacts = Solver.substitute(tuples[i].rule.causes[j], smallestSubstitutions);
-                        for (var k = 0; k < substitutedRuleFacts.length; k++) {
-                            checkProvability(substitutedRuleFacts[k]);
-                        }
-                    }
-                    if (fact.appearsIn(P)) {
-                        return;
-                    }
-                }
-            };
-
-            var saturate = function() {
-                var tuplesMatchBody, fact, evalRes, H;
-
-                while (fact = C.next()) {
-                    if (fact.appearsIn(E) || fact.appearsIn(Y)) {
-                        P.add(fact);
-                    }
-                }
-
-                while (fact = P.next()) {
-                    if (V.add(fact)) {
-                        tuplesMatchBody = Solver.matchBody(R, fact);
-                        for (var i = 0; i < tuplesMatchBody.length; i++) {
-                            evalRes = Solver.eval(V.toArray(), tuplesMatchBody[i].annotatedQuery, [fact], tuplesMatchBody[i].mapping);
-                            H = Solver.substitute(tuplesMatchBody[i].rule.consequences[0], evalRes);
-                            for (var j = 0; j < H.length; j++) {
-                                if(C.contains(H[j])) {
-                                    P.add(H);
-                                } else {
-                                    Y.add(H);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                return;
-            };
-
-            E = Logics.minus(E, FeDel);
-            D.add(FeDel);
-
-            while (fact = D.next()) {
-                IWithoutS = Logics.minus(I, S);
-                checkProvability(fact);
-                S = Logics.minus(C.toArray(), P.toArray());
-
-                if (!P.contains(fact)) {
-                    IWithoutO = Logics.minus(I, O.toArray());
-                    tuples = Solver.matchBody(R, fact);
-                    for (var i = 0; i < tuples.length; i++) {
-                        evalRes = Solver.eval(IWithoutO, tuples[i].annotatedQuery, [fact], tuples[i].mapping, tuples[i].rule.constants);
-                        D.add(Solver.substitute(tuples[i].rule.consequences[0], evalRes));
-                    }
-                    O.add(fact);
-                }
-            }
-
-            DWithoutP = Logics.minus(D.toArray(), P.toArray());
-            I = Logics.minus(I, DWithoutP[i]);
-
-            return I;
-        };
-
-        var Rins = [],
-            FiDel = [], FiAdd = [],
-            FiAddNew = [], superSet = [],
-
-            additions, deletions,
-
-            Fe = Logics.getOnlyExplicitFacts(F),
-            Fi = Logics.getOnlyImplicitFacts(F);
-
-        if(FeDel && FeDel.length) {
-            FiDel = backwardForwardDelete(Fe, Fi, FeDel, R);
-        }
-
-        // Insertion
-        if(FeAdd && FeAdd.length) {
-            do {
-                FiAdd = Utils.uniques(FiAdd, FiAddNew);
-                superSet = Utils.uniques(Utils.uniques(Utils.uniques(Fe, Fi), FeAdd), FiAdd);
-                Rins = Logics.restrictRuleSet(R, superSet);
-                FiAddNew = Solver.evaluateRuleSet(Rins, superSet);
-            } while (Utils.uniques(FiAdd, FiAddNew).length > FiAdd.length);
-        }
-
-        additions = Utils.uniques(FeAdd, FiAdd);
-        deletions = Utils.uniques(FeDel, FiDel);
-
-        F = Utils.uniques(F, additions);
-        F = Logics.minus(F, deletions);
-
-        return {
-            additions: additions,
-            deletions: deletions,
-            updatedF: F
-        };
     },
 
     /**
@@ -279,7 +153,7 @@ ReasoningEngine = {
     tagFilter: function(F) {
         var validSet = [];
         for (var i = 0; i < F.length; i++) {
-            if (F[i] && F[i].isValid()) {
+            if (F[i].isValid()) {
                 validSet.push(F[i]);
             }
         }
@@ -317,7 +191,7 @@ ReasoningEngine = {
                 Rins = Logics.restrictRuleSet(R, F);
                 Solver.evaluateRuleSet(Rins, F, true)
                     .then(function(values) {
-                        FiAdd = values;
+                        FiAdd = values.cons;
                         if (Logics.unify(FiAdd, Fi)) {
                             setTimeout(evaluationLoop, 1);
                         } else {

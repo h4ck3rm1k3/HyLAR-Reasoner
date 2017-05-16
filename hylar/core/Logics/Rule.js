@@ -17,6 +17,7 @@ Rule = function(slf, srf, name) {
     this.operatorCauses = [];
     this.consequences = srf;
     this.constants = [];
+    this.dependentRules = [];
     this.matches = {};
 
     for (var i = 0; i < slf.length; i++) {
@@ -94,28 +95,23 @@ Rule.prototype = {
         this.causes = orderedCauses;
     },
 
-    addCause: function(cause) {
-        var newRule = new Rule(this.causes.concat([cause]), this.consequences);
-        this.causes = newRule.causes;
-        this.consequences = newRule.consequences;
-        this.constants = newRule.constants;
+    dependsOn: function(rule) {
+        for (var i = 0; i < rule.consequences.length; i++) {
+            var cons = rule.consequences[i];
+            for (var j = 0; j < this.causes.length; j++) {
+                var cause = this.causes[j];
+                if (cause.hasSimilarPatternWith(cons)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     },
 
-    addConsequence: function(cons) {
-        var newRule = new Rule(this.causes, this.consequences.concat([cons]));
-        this.causes = newRule.causes;
-        this.consequences = newRule.consequences;
-        this.constants = newRule.constants;
-    },
-
-    // @todo
-    getIdbPredicates: function() {
-
-    },
-
-    // @todo
-    getEdbPredicates: function() {
-
+    addDependentRule: function(rule) {
+        if (!(rule in this.dependentRules)) {
+            this.dependentRules.push(rule);
+        }
     },
 
     toCHR: function() {
@@ -134,7 +130,7 @@ Rule.prototype = {
         factConj = factConj.substring(0,factConj.length-2);
         
         return factConj;
-    },
+    }
 };
 
 module.exports = Rule;
