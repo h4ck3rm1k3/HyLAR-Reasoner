@@ -375,7 +375,6 @@ Hylar.prototype.treatUpdate = function(update, type) {
             return Reasoner.evaluate(FeIns, FeDel, that.getDictionary(), that.rMethod, that.rules);
 
         }).then(function(derivations) {
-            that.registerDerivations(derivations, graph);
             insDel = {
                 insert: ParsingInterface.factsToTurtle(derivations.additions),
                 delete: ParsingInterface.factsToTurtle(derivations.deletions)
@@ -489,8 +488,7 @@ Hylar.prototype.classify = function() {
             }
             return Reasoner.evaluate(facts, [], that.getDictionary(), that.rMethod, that.rules);
         })
-        .then(function(r) {                                   
-            that.registerDerivations(r);
+        .then(function(r) {                
             for (var i = 0, j = r.additions.length; i < j; i += chunksNb) {
                 factsChunk = r.additions.slice(i,i+chunksNb);
                 chunks.push(ParsingInterface.factsToTurtle(factsChunk));
